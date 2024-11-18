@@ -8,26 +8,31 @@ init:
 # there will be intermitent errors when running `npm install`
 environment:
   matrix:
-    - nodejs_version: 4.7
+    # Update-NodeJsInstallation needs a specific version
+    - nodejs_version: 4.7.3
       npm_version: ^3.0.0
-    - nodejs_version: 4.8
+    - nodejs_version: 4.8.7
       npm_version: ^3.0.0
-    - nodejs_version: 5.6
+    - nodejs_version: 5.6.0
       npm_version: ^3.0.0
-    - nodejs_version: 5.7
+    - nodejs_version: 5.7.1
       npm_version: ^3.0.0
     - nodejs_version: 6
     - nodejs_version: 8
     - nodejs_version: 9
 
 install:
-  - ps: Install-Product node $env:nodejs_version
+  # These 2 lines are with a condition because Update-NodeJsInstallation takes around 2-3 minutes
+  # so we want to use Install-Product when possible
+  - ps: if($env:npm_version -eq "^3.0.0"){Update-NodeJsInstallation $env:nodejs_version x86}
+  - ps: if($env:npm_version -eq $null){Install-Product node $env:nodejs_version}
+  # Powershell throws an exception if npm prints words like error to stderr, so --loglevel=error is needed to prevent that
   - ps: |
       if ($env:npm_version)
       {
-        npm install -g npm@$env:npm_version
+        npm install -g npm@$env:npm_version --loglevel=error
       }
-  - npm install
+  - npm install --loglevel=error
 
 build: off
 
@@ -37,5 +42,6 @@ test_script:
   - cmd: npm test --no-color
 
 after_test:
-  - "npm i codecov"
+  # Something about time machine makes this line fail if not supplied with a specific version to install
+  - "npm i codecov@3.0.0"
   - "node_modules/.bin/codecov"
